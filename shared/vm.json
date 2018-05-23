@@ -74,7 +74,8 @@
                     "dataDisks": [
                         {
                             "name": "[concat(parameters('vmName'),'-dataDisk')]",
-							"createOption": "FromImage"
+							"createOption": "FromImage",
+							"lun": 0
 						}
                     ],
                     "osDisk": {
