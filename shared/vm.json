@@ -26,6 +26,12 @@
         "interfaceRefLan": {
             "type": "string"
         },
+		"ImageResourceGroup": {
+			"type": "string"
+		},
+        "ImageName": {
+			"type": "string"
+		},		
         "devFwBlobUrlPrefix": {
             "type": "string"
         }
@@ -35,7 +41,8 @@
         "imageOffer": "sophos-xg",
         "adminUsername": "azureuser",
         "sshKeyPath": "[concat('/home/',variables('adminUsername'),'/.ssh/authorized_keys')]",
-        "vhdContainer": "vhds"
+        "vhdContainer": "vhds",
+        "managedImageId": "[resourceId(parameters('ImageResourceGroup'), 'Microsoft.Compute/images', parameters('ImageName'))]"
     },
     "resources": [
         {
@@ -61,12 +68,9 @@
                     "adminPassword": "[parameters('adminPassword')]"
                 },
                 "storageProfile": {
-                    "imageReference": {
-                        "publisher": "[variables('imagePublisher')]",
-                        "offer": "[variables('imageOffer')]",
-                        "sku": "[parameters('imageSku')]",
-                        "version": "latest"
-                    },
+					"imageReference": {
+						"id": "[variables('managedImageId')]"
+					},
                     "dataDisks": [
                         {
                             "name": "[concat(parameters('vmName'),'-dataDisk')]",

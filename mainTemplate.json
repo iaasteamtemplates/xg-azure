@@ -4,7 +4,7 @@
     "parameters": {
         "baseUrl": {
             "type": "string",
-            "defaultValue": "https://raw.githubusercontent.com/sophos-iaas/xg-azure/master",
+            "defaultValue": "https://raw.githubusercontent.com/iaasteamtemplates/xg-azure/custom-image",
             "metadata": {
                 "artifactsBaseUrl": "Base URL of the template package"
             }
@@ -33,6 +33,18 @@
                 "description": "License type to use."
             }
         },
+		"ImageResourceGroup": {
+			"type": "string",
+			"metadata": {
+				"description": "The name of the Resource Group containing the Image of the captured VM."
+			}
+		},
+		"ImageName": {
+			"type": "string",
+			"metadata": {
+				"description": "The name of the Image this VM instance will be created from."
+			}
+		},
         "vmSize": {
             "type": "string",
             "defaultValue": "Standard_A3",
@@ -469,6 +481,12 @@
                     "interfaceRefLan": {
                         "value": "[reference('SettingUpInterfaceLan','2015-01-01').outputs.interfaceRef.value]"
                     },
+					"ImageResourceGroup": {
+						"value": "[parameters('ImageResourceGroup')]"
+					},
+					"ImageName": {
+						"value": "[parameters('ImageName')]"
+					},
                     "devFwBlobUrlPrefix": {
                         "value": "[parameters('devFwBlobUrlPrefix')]"
                     }
