@@ -57,6 +57,10 @@
                                 {
                                     "label": "PAYG",
                                     "value": "payg-new"
+                                },
+								{
+                                    "label": "EAP",
+                                    "value": "eap"
                                 }
                             ]
                         }

@@ -27,7 +27,8 @@
             "defaultValue": "byol",
             "allowedValues": [
                 "byol",
-                "payg"
+                "payg-new",
+				"eap"
             ],
             "metadata": {
                 "description": "License type to use."
