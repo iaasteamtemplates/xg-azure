@@ -2,12 +2,19 @@
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "baseUrl": {
-            "type": "string",
-            "defaultValue": "https://raw.githubusercontent.com/iaasteamtemplates/xg-azure/custom-image",
-            "metadata": {
-                "artifactsBaseUrl": "Base URL of the template package"
-            }
+        "_artifactsLocation": {
+          "type": "string",
+          "metadata": {
+              "description": "The base URI where artifacts required by this template are located including a trailing '/'"
+          },
+          "defaultValue": "[deployment().properties.templateLink.uri]"
+        },
+        "_artifactsLocationSasToken": {
+          "type": "securestring",
+          "metadata": {
+              "description": "The sasToken required to access _artifactsLocation.  When the template is deployed using the accompanying scripts, a sasToken will be automatically generated. Use the defaultValue if the staging location is not secured."
+          },
+          "defaultValue": ""
         },
         "vmName": {
             "type": "string",
@@ -27,7 +34,7 @@
             "defaultValue": "byol",
             "allowedValues": [
                 "byol",
-                "payg"
+                "payg-new"
             ],
             "metadata": {
                 "description": "License type to use."
@@ -47,7 +54,7 @@
 		},
         "vmSize": {
             "type": "string",
-            "defaultValue": "Standard_A3",
+            "defaultValue": "Standard_F2s_v2",
             "metadata": {
                 "description": "Size of the Virtual Machine."
             }
@@ -65,7 +72,7 @@
         },
         "netRG": {
             "type": "string",
-            "defaultValue": "",
+            "defaultValue": "[resourceGroup().name]",
             "metadata": {
                 "description": "Resource Group of existing Virtual Network (optional)."
             }
@@ -125,7 +132,7 @@
         },
         "publicIpRG": {
             "type": "string",
-            "defaultValue": "",
+            "defaultValue": "[resourceGroup().name]",
             "metadata": {
                 "description": "Resource Group of existing Public IP (optional)."
             }
@@ -143,6 +150,17 @@
                 "description": "Unique DNS name prefix for Public IP."
             }
         },
+        "publicIpType": {
+            "type": "string",
+            "allowedValues": [
+                "Dynamic",
+                "Static"
+            ],            
+            "defaultValue": "Dynamic",
+            "metadata": {
+                "description": "Allocation method of the public ip of the VM"
+            }
+        },
         "storageNewOrExisting": {
             "type": "string",
             "defaultValue": "new",
@@ -156,7 +174,7 @@
         },
         "storageRG": {
             "type": "string",
-            "defaultValue": "",
+            "defaultValue": "[resourceGroup().name]",
             "metadata": {
                 "description": "Resource Group of existing Storage Account (optional)."
             }
@@ -172,13 +190,6 @@
             "defaultValue": "Standard_LRS",
             "metadata": {
                 "description": "Replication mode for Storage Account."
-            }
-        },
-        "location": {
-            "type": "string",
-            "defaultValue": "[resourceGroup().Location]",
-            "metadata": {
-                "description": "Geo-Location you want to deploy to."
             }
         },
         "nicWan": {
@@ -238,37 +249,45 @@
                 "description": "Name of the Availability Set"
             }
         },
-        "devFwBlobUrlPrefix": {
+        "location": {
             "type": "string",
-            "defaultValue": "",
+            "defaultValue": "[resourceGroup().location]",
             "metadata": {
-                "description": "For development only! Specifies the blob URL prefix of a development firmware. Example: https://exampleimages.blob.core.windows.net/azi/SFAZ01_SO01.Release_17.0_CLOUD.17.00.0.007.byol"
+                "description": "Location to deploy. Default to use the same location as the Resource Group"
             }
         }
     },
     "variables": {
-        "publicIpTemplate": "[concat(parameters('baseUrl'),'/shared/publicip-',parameters('publicIpNewOrExisting'),'.json')]",
-        "netTemplate": "[concat(parameters('baseUrl'),'/shared/vnet-',parameters('netNewOrExisting'),'.json')]",
-        "storageTemplate": "[concat(parameters('baseUrl'),'/shared/storageAccount-',parameters('storageNewOrExisting'),'.json')]",
-        "availabilitySetTemplate": "[concat(parameters('baseUrl'),'/shared/availabilitySet-',parameters('availabilitySetNewOrExisting'),'-aligned','.json')]",
-        "networkSecurityGroupTemplate": "[concat(parameters('baseUrl'),'/shared/networkSecurityGroup-',parameters('networkSecurityGroupNewOrExisting'),'.json')]",
-        "interfaceWanTemplate": "[concat(parameters('baseUrl'),'/shared/interface-wan.json')]",
-        "interfaceLanTemplate": "[concat(parameters('baseUrl'),'/shared/interface-lan.json')]",
-        "interfaceLBTemplate": "[concat(parameters('baseUrl'),'/shared/interface-lb.json')]",
-        "vmTemplate": "[concat(parameters('baseUrl'),if(equals(parameters('devFwBlobUrlPrefix'), ''), '/shared/vm.json', '/shared/vm_dev.json'))]",
-        "LBTemplate": "[concat(parameters('baseUrl'),'/shared/loadbalancer.json')]",
-        "publicIpType": "Dynamic",
-        "apiVersion": {
-            "resources": {
-                "deployments": "2016-02-01"
-            }
-        }
+        "publicIpTemplate": "[uri(parameters('_artifactsLocation'), concat('nestedtemplates/publicip-new.json', parameters('_artifactsLocationSasToken')))]",
+        "netTemplate": "[uri(parameters('_artifactsLocation'), concat('nestedtemplates/vnet-new.json', parameters('_artifactsLocationSasToken')))]",
+        "storageTemplate": "[uri(parameters('_artifactsLocation'), concat('nestedtemplates/storageAccount-new.json', parameters('_artifactsLocationSasToken')))]",
+        "availabilitySetTemplate": "[uri(parameters('_artifactsLocation'), concat('nestedtemplates/availabilitySet-new.json', parameters('_artifactsLocationSasToken')))]",
+        "networkSecurityGroupTemplate": "[uri(parameters('_artifactsLocation'), concat('nestedtemplates/networkSecurityGroup-new.json', parameters('_artifactsLocationSasToken')))]",
+        "interfaceWanTemplate": "[uri(parameters('_artifactsLocation'), concat('nestedtemplates/interface-wan.json', parameters('_artifactsLocationSasToken')))]",
+        "interfaceLanTemplate": "[uri(parameters('_artifactsLocation'), concat('nestedtemplates/interface-lan.json', parameters('_artifactsLocationSasToken')))]",
+        "vmTemplate": "[uri(parameters('_artifactsLocation'), concat('nestedtemplates/vm.json', parameters('_artifactsLocationSasToken')))]",
+        "storageAccountId": "[resourceId(parameters('storageRG'), 'Microsoft.Storage/storageAccounts/', parameters('storageName'))]",
+        "PubIpId": "[resourceId(parameters('publicIpRG'),'Microsoft.Network/publicIPAddresses',parameters('publicIpName'))]"
     },
     "resources": [
         {
+            "apiVersion": "2019-05-01",
+            "name": "pid-26ed137c-6fc4-561a-8230-7e65ac1591ba",
+            "type": "Microsoft.Resources/deployments",
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "resources": []
+                }
+            }
+        },
+        {
             "name": "SettingUpAvailabilitySet",
             "type": "Microsoft.Resources/deployments",
-            "apiVersion": "[variables('apiVersion').resources.deployments]",
+            "apiVersion": "2019-05-01",
+            "condition": "[equals(parameters('availabilitySetNewOrExisting'), 'new')]",
             "properties": {
                 "mode": "Incremental",
                 "templateLink": {
@@ -278,6 +297,9 @@
                 "parameters": {
                     "availabilitySetName": {
                         "value": "[parameters('availabilitySetName')]"
+                    },
+                    "location": {
+                        "value": "[parameters('location')]"
                     }
                 }
             }
@@ -285,7 +307,8 @@
         {
             "name": "SettingUpStorageAccount",
             "type": "Microsoft.Resources/deployments",
-            "apiVersion": "[variables('apiVersion').resources.deployments]",
+            "apiVersion": "2019-05-01",
+            "condition": "[equals(parameters('storageNewOrExisting'), 'new')]",
             "properties": {
                 "mode": "Incremental",
                 "templateLink": {
@@ -299,8 +322,8 @@
                     "storageAccountType": {
                         "value": "[parameters('storageType')]"
                     },
-                    "storageAccountExistingRG": {
-                        "value": "[parameters('storageRG')]"
+                    "location": {
+                        "value": "[parameters('location')]"
                     }
                 }
             }
@@ -308,7 +331,8 @@
         {
             "name": "SettingUpNetworkSecurityGroup",
             "type": "Microsoft.Resources/deployments",
-            "apiVersion": "[variables('apiVersion').resources.deployments]",
+            "apiVersion": "2019-05-01",
+            "condition": "[equals(parameters('networkSecurityGroupNewOrExisting'), 'new')]",
             "properties": {
                 "mode": "Incremental",
                 "templateLink": {
@@ -321,6 +345,9 @@
                     },
                     "trustedNetwork": {
                         "value": "[parameters('trustedNetwork')]"
+                    },
+                    "location": {
+                        "value": "[parameters('location')]"
                     }
                 }
             }
@@ -328,7 +355,8 @@
         {
             "name": "SettingUpPublicIP",
             "type": "Microsoft.Resources/deployments",
-            "apiVersion": "[variables('apiVersion').resources.deployments]",
+            "apiVersion": "2019-05-01",
+            "condition": "[equals(parameters('publicIpNewOrExisting'), 'new')]",
             "properties": {
                 "mode": "Incremental",
                 "templateLink": {
@@ -340,13 +368,13 @@
                         "value": "[parameters('publicIpName')]"
                     },
                     "publicIPAddressType": {
-                        "value": "[variables('publicIpType')]"
+                        "value": "[parameters('publicIpType')]"
                     },
                     "dnsPrefix": {
                         "value": "[parameters('publicIpDNS')]"
                     },
-                    "publicIpRGName": {
-                        "value": "[parameters('publicIpRG')]"
+                    "location": {
+                        "value": "[parameters('location')]"
                     }
                 }
             }
@@ -354,7 +382,8 @@
         {
             "name": "SettingUpVirtualNetwork",
             "type": "Microsoft.Resources/deployments",
-            "apiVersion": "[variables('apiVersion').resources.deployments]",
+            "apiVersion": "2019-05-01",
+            "condition": "[equals(parameters('netNewOrExisting'), 'new')]",
             "properties": {
                 "mode": "Incremental",
                 "templateLink": {
@@ -380,8 +409,8 @@
                     "Subnet2Prefix": {
                         "value": "[parameters('lanPrefix')]"
                     },
-                    "vnetExistingRGName": {
-                        "value": "[parameters('netRG')]"
+                    "location": {
+                        "value": "[parameters('location')]"
                     }
                 }
             }
@@ -389,7 +418,7 @@
         {
             "name": "SettingUpInterfaceWan",
             "type": "Microsoft.Resources/deployments",
-            "apiVersion": "[variables('apiVersion').resources.deployments]",
+            "apiVersion": "2019-05-01",
             "dependsOn": [
                 "[concat('Microsoft.Resources/deployments/', 'SettingUpPublicIP')]",
                 "[concat('Microsoft.Resources/deployments/', 'SettingUpVirtualNetwork')]",
@@ -406,13 +435,16 @@
                         "value": "[parameters('nicWan')]"
                     },
                     "subnetRef": {
-                        "value": "[reference('SettingUpVirtualNetwork','2015-01-01').outputs.subnet1Ref.value]"
+                        "value": "[resourceId(parameters('netRG'),'Microsoft.Network/virtualNetworks/subnets',parameters('netName'), parameters('wanName'))]"
                     },
                     "publicIpId": {
-                        "value": "[reference('SettingUpPublicIP').outputs.publicIpId.value]"
+                        "value": "[resourceId(parameters('publicIpRG'), 'Microsoft.Network/publicIPAddresses', parameters('publicIpName'))]"
                     },
                     "networkSecurityGroupId": {
-                        "value": "[reference('SettingUpNetworkSecurityGroup','2015-01-01').outputs.networkSecurityGroupName.value]"
+                        "value": "[resourceId('Microsoft.Compute/networkSecurityGroups',parameters('networkSecurityGroupName'))]"
+                    },
+                    "location": {
+                        "value": "[parameters('location')]"
                     }
                 }
             }
@@ -420,7 +452,7 @@
         {
             "name": "SettingUpInterfaceLan",
             "type": "Microsoft.Resources/deployments",
-            "apiVersion": "[variables('apiVersion').resources.deployments]",
+            "apiVersion": "2019-05-01",
             "dependsOn": [
                 "[concat('Microsoft.Resources/deployments/', 'SettingUpVirtualNetwork')]"
             ],
@@ -435,7 +467,10 @@
                         "value": "[parameters('nicLan')]"
                     },
                     "subnetRef": {
-                        "value": "[reference('SettingUpVirtualNetwork','2015-01-01').outputs.subnet2Ref.value]"
+                        "value": "[resourceId(parameters('netRG'),'Microsoft.Network/virtualNetworks/subnets',parameters('netName'), parameters('lanName'))]"
+                    },
+                    "location": {
+                        "value": "[parameters('location')]"
                     }
                 }
             }
@@ -443,7 +478,7 @@
         {
             "name": "SettingUpVm",
             "type": "Microsoft.Resources/deployments",
-            "apiVersion": "[variables('apiVersion').resources.deployments]",
+            "apiVersion": "2019-05-01",
             "dependsOn": [
                 "[concat('Microsoft.Resources/deployments/', 'SettingUpInterfaceWan')]",
                 "[concat('Microsoft.Resources/deployments/', 'SettingUpInterfaceLan')]",
@@ -470,16 +505,16 @@
                         "value": "[parameters('imageSku')]"
                     },
                     "availabilitySetId": {
-                        "value": "[reference('SettingUpAvailabilitySet').outputs.availabilitySetId.value]"
+                        "value": "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySetName'))]"
                     },
                     "storageAccountEndpoint": {
-                        "value": "[reference('SettingUpStorageAccount').outputs.storageAccountEndpoint.value]"
+                        "value": "[if(equals(parameters('storageNewOrExisting'), 'new'), reference('SettingUpStorageAccount').outputs.storageAccountEndpoint.value, reference(variables('storageAccountId'), '2019-06-01').primaryEndpoints.blob)]"
                     },
                     "interfaceRefWan": {
-                        "value": "[reference('SettingUpInterfaceWan','2015-01-01').outputs.interfaceRef.value]"
+                        "value": "[reference('SettingUpInterfaceWan','2019-08-01').outputs.interfaceRef.value]"
                     },
                     "interfaceRefLan": {
-                        "value": "[reference('SettingUpInterfaceLan','2015-01-01').outputs.interfaceRef.value]"
+                        "value": "[reference('SettingUpInterfaceLan','2019-08-01').outputs.interfaceRef.value]"
                     },
 					"ImageResourceGroup": {
 						"value": "[parameters('ImageResourceGroup')]"
@@ -487,8 +522,8 @@
 					"ImageName": {
 						"value": "[parameters('ImageName')]"
 					},
-                    "devFwBlobUrlPrefix": {
-                        "value": "[parameters('devFwBlobUrlPrefix')]"
+                    "location": {
+                        "value": "[parameters('location')]"
                     }
                 }
             }
@@ -496,7 +531,7 @@
     ],
     "outputs": {
         "fqdn": {
-            "value": "[reference('SettingUpPublicIP').outputs.fqdn.value]",
+            "value": "[if(equals(parameters('publicIpNewOrExisting'), 'new'),reference('SettingUpPublicIP').outputs.fqdn.value, reference(variables('PubIpId'), '2019-08-01').dnsSettings.fqdn)]",
             "type": "string"
         }
     }
